@@ -4,10 +4,10 @@ import tomllib
 from pathlib import Path
 from packaging.requirements import Requirement, InvalidRequirement
 from .. import cache
-from ..parsers.requirements_parser import parse_environment, parse
+from ..parsers.requirements_parser import parse_environment
 
 
-def _resolve_dependency_versions(deps: list[str]) -> dict[str, str]:
+def resolve_dependency_versions(deps: list[str]) -> dict[str, str]:
     resolved = {}
     for dep in deps:
         try:
@@ -47,6 +47,7 @@ async def get_package_metadata(client: httpx.AsyncClient, package: str, version:
         "version": info["version"],
         "requires_python": info["requires_python"],
         "requires_dist": info["requires_dist"] or [],
+        "classifiers": info.get("classifiers") or [],
     }
     cache.set(cache_key, result)
     return result
@@ -67,7 +68,7 @@ async def resolve(client: httpx.AsyncClient, packages: dict[str, str]) -> dict:
                 continue
             assert isinstance(result, dict)
             visited[package] = result
-            sub_deps = _resolve_dependency_versions(result.get("requires_dist", []))
+            sub_deps = resolve_dependency_versions(result.get("requires_dist", []))
             for sd in sub_deps:
                 if sd not in visited and sd not in next_queue:
                     next_queue.append(sd)
@@ -84,7 +85,7 @@ def parse_manifest(filepath: Path, env: str | None = None) -> tuple[str | None, 
                 data = tomllib.load(f)
             project = data.get("project") or {}
             rp = project.get("requires-python")
-            packages = _resolve_dependency_versions(project.get("dependencies", []))
+            packages = resolve_dependency_versions(project.get("dependencies", []))
             return rp, packages
         except Exception as e:
             print(f"Warning: failed to parse pyproject.toml: {e}")
