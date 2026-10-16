@@ -1,7 +1,7 @@
-import networkx as nx
-import matplotlib.pyplot as plt
-from networkx.drawing.nx_pydot import to_pydot
 import click
+import matplotlib.pyplot as plt
+import networkx as nx
+from networkx.drawing.nx_pydot import to_pydot
 
 
 def visualize_pydot(graph: nx.DiGraph, output_path: str = "graph.png"):

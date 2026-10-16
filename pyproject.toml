@@ -1,6 +1,6 @@
 [project]
 name = "repaudit"
-version = "0.0.1"
+version = "0.0.1a1"
 description = "A cli-package to audit your repository for dependency deprecations, mismatch, drift and vulnerabilities"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -25,3 +25,8 @@ package = true
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "pytest~=9.1.1",
+]

@@ -1,33 +1,88 @@
 import asyncio
 import json
-import sys
+
+# import sys
 from pathlib import Path
 
 import click
 import httpx
 
-from .audit import run_audit
+from .audit import gather, run_audit
 from .dagger import build_dependency_graph
-from .resolvers.pypi_resolver import parse_manifest, resolve as resolve_packages
+from .models import Manifest, RepositoryNode
+from .resolvers.pypi_resolver import parse_manifest
+from .resolvers.pypi_resolver import resolve as resolve_packages
 from .viz import visualize_matplotlib, visualize_pydot
 
 
-async def _run_audit(path: Path):
-    async with httpx.AsyncClient() as client:
-        return await run_audit(path, client)
+def render_tree(node: RepositoryNode) -> list[str]:
+    """Render a repository tree for the discovery checkpoint."""
+    lines = [f"{node.path}/"]
+
+    def render_children(current: RepositoryNode, prefix: str) -> None:
+        entries = []
+
+        for name, child in current.children.items():
+            entries.append((name, "directory", child))
+
+        for manifest in current.manifests:
+            entries.append((manifest.filename, "manifest", manifest))
+
+        entries.sort(key=lambda entry: (entry[0].lower(), entry[1]))
+
+        for index, (name, kind, item) in enumerate(entries):
+            is_last = index == len(entries) - 1
+            connector = "└── " if is_last else "├── "
+            lines.append(f"{prefix}{connector}{name}")
+
+            if kind == "manifest":
+                lines.append(
+                    f"{prefix}{'    ' if is_last else '│   '}"
+                    f"[{item.ecosystem}: {item.manifest_type}]"
+                )
+            else:
+                child_prefix = prefix + ("    " if is_last else "│   ")
+                render_children(item, child_prefix)
+
+    render_children(node, "")
+    return lines
+
+
+# async def _run_audit(path: Path):
+#     async with httpx.AsyncClient() as client:
+#         return await run_audit(path, client)
+
+
+# @click.group(invoke_without_command=True)
+# @click.argument("path", default=".", type=click.Path(exists=True))
+# @click.pass_context
+# def cli(ctx, path):
+#     """Audit a repository's dependencies."""
+#     if ctx.invoked_subcommand is None:
+#         findings = asyncio.run(_run_audit(Path(path)))
+#         has_errors = any(f.severity == "error" for f in findings)
+#         for f in findings:
+#             click.echo(str(f))
+#         sys.exit(1 if has_errors else 0)
 
 
 @click.group(invoke_without_command=True)
-@click.argument("path", default=".", type=click.Path(exists=True))
+@click.argument(
+    "path",
+    default=".",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path, resolve_path=True),
+)
 @click.pass_context
-def cli(ctx, path):
-    """Audit a repository's dependencies."""
+def cli(ctx, path: Path):
+    """Discover ecosystems and audit a repository's dependencies."""
     if ctx.invoked_subcommand is None:
-        findings = asyncio.run(_run_audit(Path(path)))
-        has_errors = any(f.severity == "error" for f in findings)
-        for f in findings:
-            click.echo(str(f))
-        sys.exit(1 if has_errors else 0)
+        try:
+            repository = gather(path)
+        except (OSError, ValueError) as exc:
+            raise click.ClickException(str(exc)) from exc
+
+        for line in render_tree(repository):
+            click.echo(line)
 
 
 @cli.command()
@@ -67,7 +122,7 @@ def inspect(package, as_json):
             graph, order = build_dependency_graph(deps)
             return deps, graph, order
 
-    deps, graph, order = asyncio.run(_run())
+    deps, graph, _ = asyncio.run(_run())
     if as_json:
         click.echo(json.dumps(deps, indent=2, default=str))
         return
