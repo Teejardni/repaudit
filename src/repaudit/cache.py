@@ -1,9 +1,9 @@
-import json
 import hashlib
+import json
+import os
 import time
 from pathlib import Path
 from typing import Any
-import os
 
 _xdg_cache = os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")
 CACHE_DIR = Path(_xdg_cache) / ".repaudit" / "cache"
@@ -49,5 +49,5 @@ def stats() -> dict:
     return {
         "entries": len(files),
         "size_bytes": sum(f.stat().st_size for f in files),
-        "path": str(CACHE_DIR)
+        "path": str(CACHE_DIR),
     }

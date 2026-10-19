@@ -20,7 +20,9 @@ def resolve_dependency_versions(deps: list[str]) -> dict[str, str]:
     return resolved
 
 
-async def get_package_metadata(client: httpx.AsyncClient, package: str, version: str | None = None) -> dict:
+async def get_package_metadata(
+    client: httpx.AsyncClient, package: str, version: str | None = None
+) -> dict:
     url = (
         f"https://pypi.org/pypi/{package}/json"
         if not version
@@ -76,7 +78,9 @@ async def resolve(client: httpx.AsyncClient, packages: dict[str, str]) -> dict:
     return visited
 
 
-def parse_manifest(filepath: Path, env: str | None = None) -> tuple[str | None, dict[str, str]]:
+def parse_manifest(
+    filepath: Path, env: str | None = None
+) -> tuple[str | None, dict[str, str]]:
     filepath = Path(filepath)
     pptml = filepath / "pyproject.toml"
     if pptml.exists():

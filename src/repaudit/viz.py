@@ -7,13 +7,9 @@ from networkx.drawing.nx_pydot import to_pydot
 def visualize_pydot(graph: nx.DiGraph, output_path: str = "graph.png"):
     """Default viz — clean hierarchical layout via graphviz/pydot"""
     dot = to_pydot(graph)
-    
+
     # styling
-    dot.set_graph_defaults(
-        rankdir="BT",       
-        bgcolor="#1a1a1a",
-        pad="0.5"
-    )
+    dot.set_graph_defaults(rankdir="BT", bgcolor="#1a1a1a", pad="0.5")
     dot.set_node_defaults(
         shape="box",
         style="filled",
@@ -21,18 +17,16 @@ def visualize_pydot(graph: nx.DiGraph, output_path: str = "graph.png"):
         fontcolor="#ffffff",
         fontname="Courier",
         fontsize="10",
-        color="#444444"
+        color="#444444",
     )
-    dot.set_edge_defaults(
-        color="#555555",
-        arrowsize="0.7"
-    )
+    dot.set_edge_defaults(color="#555555", arrowsize="0.7")
 
     dot.write_png(output_path)
     click.echo(f"Graph written to {output_path}")
 
     import subprocess
     import sys
+
     if sys.platform == "linux":
         subprocess.run(["xdg-open", output_path])
     elif sys.platform == "darwin":
@@ -56,15 +50,24 @@ def visualize_matplotlib(graph: nx.DiGraph):
     roots = [n for n in graph.nodes if graph.in_degree(n) == 0]
     rest = [n for n in graph.nodes if graph.in_degree(n) != 0]
 
-    nx.draw_networkx_nodes(graph, pos, nodelist=roots, node_color="#e05c5c",
-                           node_size=300, ax=ax)
-    nx.draw_networkx_nodes(graph, pos, nodelist=rest, node_color="#5c8de0",
-                           node_size=200, ax=ax)
-    nx.draw_networkx_edges(graph, pos, edge_color="#555555",
-                           arrows=True, arrowsize=10,
-                           connectionstyle="arc3,rad=0.1", ax=ax)
-    nx.draw_networkx_labels(graph, pos, font_color="#ffffff",
-                            font_size=6, font_family="monospace", ax=ax)
+    nx.draw_networkx_nodes(
+        graph, pos, nodelist=roots, node_color="#e05c5c", node_size=300, ax=ax
+    )
+    nx.draw_networkx_nodes(
+        graph, pos, nodelist=rest, node_color="#5c8de0", node_size=200, ax=ax
+    )
+    nx.draw_networkx_edges(
+        graph,
+        pos,
+        edge_color="#555555",
+        arrows=True,
+        arrowsize=10,
+        connectionstyle="arc3,rad=0.1",
+        ax=ax,
+    )
+    nx.draw_networkx_labels(
+        graph, pos, font_color="#ffffff", font_size=6, font_family="monospace", ax=ax
+    )
 
     ax.set_title("Dependency Graph", color="#ffffff", fontsize=14, pad=20)
     plt.tight_layout()

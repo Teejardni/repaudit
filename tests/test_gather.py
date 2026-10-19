@@ -170,6 +170,7 @@ def test_discovery_order_is_deterministic(tmp_path):
     assert list(first.children) == list(second.children)
     assert first.manifests == second.manifests
 
+
 def test_gather_performance(tmp_path):
     """Benchmark gather() against a synthetic repository tree."""
     num_dirs = 100

@@ -4,10 +4,10 @@ from packaging.requirements import Requirement, InvalidRequirement
 
 
 SKIP_PREFIXES = (
-    "--",   # installer flags
-    "-i",   # --index-url
-    "-e",   # editable installs (local paths, not auditable via PyPI)
-    "#",    # comments
+    "--",  # installer flags
+    "-i",  # --index-url
+    "-e",  # editable installs (local paths, not auditable via PyPI)
+    "#",  # comments
 )
 
 
@@ -26,8 +26,8 @@ def _parse_line(line: str) -> Tuple[str, str] | None:
 
     try:
         req = Requirement(line)
-        
-        if req.marker and "extra" in str(req.marker): # Skip extra marked deps
+
+        if req.marker and "extra" in str(req.marker):  # Skip extra marked deps
             return None
         return req.name.lower(), str(req.specifier)
     except InvalidRequirement:
@@ -40,7 +40,7 @@ def _resolve_includes(file_path: Path, visited: set) -> Dict[str, str]:
     Recursively follow -r and -c include directives.
     """
     packages = {}
-    abs_path = file_path.resolve() #circular includes guard
+    abs_path = file_path.resolve()  # circular includes guard
     if abs_path in visited:
         return packages
     visited.add(abs_path)
@@ -63,10 +63,23 @@ def _resolve_includes(file_path: Path, visited: set) -> Dict[str, str]:
 
     return packages
 
+
 ENV_CANDIDATES = {
-    "prod":  ["requirements/prod.txt", "requirements/production.txt", "requirements-prod.txt"],
-    "dev":   ["requirements/dev.txt", "requirements/development.txt", "requirements-dev.txt"],
-    "base":  ["requirements/base.txt", "requirements/common.txt", "requirements-base.txt"],
+    "prod": [
+        "requirements/prod.txt",
+        "requirements/production.txt",
+        "requirements-prod.txt",
+    ],
+    "dev": [
+        "requirements/dev.txt",
+        "requirements/development.txt",
+        "requirements-dev.txt",
+    ],
+    "base": [
+        "requirements/base.txt",
+        "requirements/common.txt",
+        "requirements-base.txt",
+    ],
     "plain": ["requirements.txt"],
 }
 
@@ -95,7 +108,9 @@ def parse(file_path: Path) -> Dict[str, str]:
     return _resolve_includes(file_path, visited=set())
 
 
-def parse_environment(project_path: Path, env: str | None = None) -> Tuple[Dict[str, str], str]:
+def parse_environment(
+    project_path: Path, env: str | None = None
+) -> Tuple[Dict[str, str], str]:
     """
     Parse the appropriate requirements file for the given environment.
     If env is None, prefer prod > base > plain — most conservative first,
@@ -110,7 +125,9 @@ def parse_environment(project_path: Path, env: str | None = None) -> Tuple[Dict[
 
     if env:
         if env not in found:
-            print(f"Warning: environment '{env}' not found, falling back to auto-detect")
+            print(
+                f"Warning: environment '{env}' not found, falling back to auto-detect"
+            )
         else:
             return parse(found[env]), env
 

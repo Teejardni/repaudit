@@ -1,9 +1,10 @@
 from typing import Literal
 from dataclasses import dataclass
 
+
 @dataclass
 class Report:
-    severity: Literal['error', 'warning', 'info']
+    severity: Literal["error", "warning", "info"]
     code: str
     message: str
     affected: list[str]

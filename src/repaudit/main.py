@@ -7,9 +7,10 @@ from pathlib import Path
 import click
 import httpx
 
-from .audit import gather, run_audit
+from .audit import gather
 from .dagger import build_dependency_graph
 from .models import Manifest, RepositoryNode
+from .parsers.manifest_parser import parse_repository
 from .resolvers.pypi_resolver import parse_manifest
 from .resolvers.pypi_resolver import resolve as resolve_packages
 from .viz import visualize_matplotlib, visualize_pydot
@@ -47,7 +48,34 @@ def render_tree(node: RepositoryNode) -> list[str]:
     render_children(node, "")
     return lines
 
+def render_parsed_tree(node):
+    """Render parsed dependencies and manifest failures by directory."""
+    lines = [f"{node.path}/"]
 
+    for dependency in node.dependencies:
+        version = (
+            f" (constraint: {dependency.version_spec})"
+            if dependency.version_spec
+            else ""
+        )
+        if dependency.locked_version:
+            version += f" (locked: {dependency.locked_version})"
+
+        lines.append(
+            f"  {dependency.name}{version}"
+            f" [{dependency.file_style}]"
+        )
+
+    for failure in node.failures:
+        lines.append(
+            f"  PARSE FAILURE [{failure.category}] "
+            f"{failure.source_file}: {failure.message}"
+        )
+
+    for child in node.children.values():
+        lines.extend(render_parsed_tree(child))
+
+    return lines
 # async def _run_audit(path: Path):
 #     async with httpx.AsyncClient() as client:
 #         return await run_audit(path, client)
@@ -70,7 +98,9 @@ def render_tree(node: RepositoryNode) -> list[str]:
 @click.argument(
     "path",
     default=".",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path, resolve_path=True),
+    type=click.Path(
+        exists=True, file_okay=False, dir_okay=True, path_type=Path, resolve_path=True
+    ),
 )
 @click.pass_context
 def cli(ctx, path: Path):
@@ -78,19 +108,23 @@ def cli(ctx, path: Path):
     if ctx.invoked_subcommand is None:
         try:
             repository = gather(path)
+            parsed_repository = parse_repository(repository, path)
         except (OSError, ValueError) as exc:
             raise click.ClickException(str(exc)) from exc
 
-        for line in render_tree(repository):
+        for line in render_parsed_tree(parsed_repository):
             click.echo(line)
 
 
 @cli.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
-@click.option("--fancy", "-f", is_flag=True, help="Matplotlib visualisation instead of pydot")
+@click.option(
+    "--fancy", "-f", is_flag=True, help="Matplotlib visualisation instead of pydot"
+)
 @click.option("--json", "as_json", is_flag=True, help="Dump raw output as JSON")
 def resolve(path, fancy, as_json):
     """Resolve dependencies from a pyproject.toml or requirements.txt"""
+
     async def _run():
         async with httpx.AsyncClient() as client:
             _, packages = parse_manifest(Path(path))
@@ -116,6 +150,7 @@ def resolve(path, fancy, as_json):
 @click.option("--json", "as_json", is_flag=True, help="Dump raw output as JSON")
 def inspect(package, as_json):
     """Inspect a single package and its full dependency tree"""
+
     async def _run():
         async with httpx.AsyncClient() as client:
             deps = await resolve(client, {package: ""})
@@ -131,10 +166,13 @@ def inspect(package, as_json):
 
 @cli.command()
 @click.option("--clear", is_flag=True, help="Delete all cached entries")
-@click.option("--stats", "show_stats", is_flag=True, help="Show cache size and entry count")
+@click.option(
+    "--stats", "show_stats", is_flag=True, help="Show cache size and entry count"
+)
 def cache(clear, show_stats):
     """Manage the repaudit cache"""
     from . import cache as cache_module
+
     if clear:
         deleted = cache_module.clear()
         click.echo(click.style(f"Cleared {deleted} cached entries", fg="green"))
